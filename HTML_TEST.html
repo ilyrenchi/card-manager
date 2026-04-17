@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>天天玩樂園 - 友人群組集卡管理</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
+        
+        :root {
+            --current-theme: #fcc5cc;
+            --gold-card: #FFD700;
+        }
+
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: var(--current-theme);
+            background-image: radial-gradient(rgba(255, 255, 255, 0.3) 1.5px, transparent 1.5px);
+            background-size: 30px 30px;
+            min-height: 100vh;
+            transition: background-color 0.5s ease;
+            overflow-x: hidden;
+        }
+
+        /* 主畫面歡迎區塊的緩慢浮動動畫 */
+        @keyframes soft-float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-15px); }
+        }
+        .main-card-float {
+            animation: soft-float 4s ease-in-out infinite;
+        }
+
+        /* 漸層文字樣式 - 確保所有字元包含符號都渲染 */
+        .magic-text {
+            background: linear-gradient(to bottom, #ffffff, #ffe4e6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: inline-block;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+            white-space: nowrap; /* 防止符號掉到下一行 */
+        }
+
+        /* 魔法星塵閃爍動畫 */
+        @keyframes sparkle-blink {
+            0%, 100% { opacity: 0; transform: scale(0.5) rotate(0deg); }
+            50% { opacity: 0.8; transform: scale(1.2) rotate(180deg); }
+        }
+
+        .sparkle {
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            fill: white;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* 背景大圓圈的呼吸效果 */
+        @keyframes glow-pulse {
+            0%, 100% { opacity: 0.15; transform: scale(1); }
+            50% { opacity: 0.25; transform: scale(1.1); }
+        }
+        .bg-glow {
+            animation: glow-pulse 6s ease-in-out infinite;
+        }
+
+        .game-panel {
+            background: #ffffff;
+            border: 4px solid rgba(255, 255, 255, 0.6);
+            border-radius: 28px;
+            box-shadow: 0 8px 0px rgba(0,0,0,0.02);
+        }
+
+        .card-item {
+            position: relative;
+            aspect-ratio: 4/5;
+            border-radius: 18px;
+            transition: transform 0.2s ease;
+        }
+
+        .card-owned {
+            border: 3px solid #ffffff;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+            display: flex; flex-direction: column; justify-content: space-between; padding: 12px;
+        }
+
+        .is-gold-card {
+            border: 3px solid var(--gold-card) !important;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.4) !important;
+        }
+        .gold-label {
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            background: var(--gold-card);
+            color: #000;
+            font-size: 8px;
+            font-weight: 900;
+            padding: 1px 4px;
+            border-radius: 4px;
+            z-index: 20;
+        }
+
+        .card-missing {
+            background: rgba(255, 255, 255, 0.3);
+            border: 2px dashed rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center; justify-content: center;
+            padding: 10px;
+        }
+
+        .card-stars {
+            font-size: 10px;
+            letter-spacing: 2px;
+            margin-bottom: 4px;
+            z-index: 10;
+            font-weight: 900;
+        }
+        .card-owned .card-stars { 
+            color: #FFD700; 
+            -webkit-text-stroke: 0.5px #FFFFFF;
+        }
+        .card-missing .card-stars { 
+            color: #E5E7EB; 
+            -webkit-text-stroke: 0.5px #9CA3AF;
+        }
+
+        .card-name { font-weight: 900; text-align: center; z-index: 5; line-height: 1.2; word-break: break-all; }
+        .card-owned .card-name { color: #ffffff; text-shadow: 0 1px 3px rgba(0,0,0,0.1); font-size: 0.8rem; }
+
+        .gift-badge {
+            position: absolute; top: -8px; right: -8px; background: #f08080; color: white;
+            border-radius: 50%; width: 26px; height: 26px; display: flex; align-items: center;
+            justify-content: center; font-weight: 900; font-size: 12px; border: 2px solid white; z-index: 20;
+        }
+
+        .btn-main { padding: 8px 24px; border-radius: 12px; font-weight: 900; color: white; cursor: pointer; }
+        .btn-ctrl { width: 26px; height: 26px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 900; cursor: pointer; z-index: 30; }
+
+        .sidebar { background: rgba(255, 255, 255, 0.92); border-right: 1px solid rgba(0,0,0,0.05); backdrop-blur: 8px; }
+        .user-tab { transition: all 0.2s ease; cursor: pointer; }
+        
+        .glow-white { color: white; text-shadow: 0 2px 8px rgba(255, 255, 255, 0.3), 0 2px 4px rgba(0,0,0,0.1); }
+        
+        .pink-title { 
+            color: rgba(255, 255, 255, 0.8); 
+            text-shadow: 1px 1px 2px rgba(229, 152, 155, 0.4); 
+        }
+
+        .fill-all-btn {
+            font-size: 10px;
+            font-weight: 800;
+            padding: 2px 8px;
+            border-radius: 6px;
+            background: rgba(0,0,0,0.05);
+            color: rgba(0,0,0,0.4);
+            transition: all 0.2s;
+        }
+        .fill-all-btn:hover {
+            background: rgba(0,0,0,0.1);
+            color: rgba(0,0,0,0.8);
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <div id="homePage" class="flex flex-col md:flex-row min-h-screen">
+        <aside class="sidebar w-full md:w-72 p-6 flex flex-col h-auto md:h-screen">
+            <h2 class="text-2xl font-black text-[#e5989b] tracking-widest mb-8">FRIENDS</h2>
+            <div id="userList" class="flex-1 space-y-3 overflow-y-auto pr-2"></div>
+            <button onclick="addUser()" class="mt-6 w-full py-3 bg-gray-50 text-gray-400 rounded-xl font-bold border border-dashed hover:bg-white transition">+ 新增好友</button>
+        </aside>
+
+        <!-- 主畫面歡迎區塊 -->
+        <main id="mainCanvas" class="flex-1 flex flex-col items-center justify-center p-8 text-center relative overflow-hidden">
+            <!-- 背景裝飾 -->
+            <div class="absolute w-80 h-80 bg-white/20 rounded-full bg-glow" style="top: 10%; left: 15%;"></div>
+            <div class="absolute w-40 h-40 bg-white/10 rounded-full bg-glow" style="bottom: 20%; right: 10%; animation-delay: -2s;"></div>
+            
+            <!-- 魔法星塵 -->
+            <div id="sparkleLayer" class="absolute inset-0 pointer-events-none"></div>
+            
+            <div class="main-card-float bg-white/10 p-10 md:p-14 rounded-[50px] border border-white/40 shadow-2xl backdrop-blur-lg max-w-2xl w-full z-10">
+                <h2 class="text-xl font-black glow-white mb-8 tracking-[0.2em] opacity-80">WELCOME TO</h2>
+                
+                <!-- 完整的云の魔法世界*₊♡˚˖ 文字 -->
+                <div class="magic-text font-black tracking-widest text-4xl md:text-5xl lg:text-6xl mb-10 leading-normal">
+                    云の魔法世界*₊♡˚˖
+                </div>
+                
+                <!-- PLAY TOGETHER (已放大約 5pt: 從 36px 增加到 41px) -->
+                <h1 class="text-[41px] font-black pink-title mb-12 italic tracking-tighter opacity-90">PLAY TOGETHER</h1>
+                
+                <!-- 裝飾線 -->
+                <div class="h-[1.5px] w-20 bg-gradient-to-r from-transparent via-white/40 to-transparent mx-auto mb-10"></div>
+                
+                <p class="text-white/70 text-sm font-bold tracking-wider">請從左側選單選擇一位好友來管理卡片</p>
+            </div>
+        </main>
+    </div>
+
+    <!-- 管理頁面 -->
+    <div id="managePage" class="hidden min-h-screen p-4 md:p-8">
+        <div class="max-w-5xl mx-auto">
+            <header class="flex flex-wrap items-center justify-between mb-10 gap-4">
+                <div class="flex items-center gap-4">
+                    <button onclick="backToHome()" class="bg-white/80 px-4 py-2 rounded-xl font-bold text-sm shadow-sm" id="backBtn">返回</button>
+                    <h1 id="currentUserTitle" class="text-3xl font-black text-white glow-white"></h1>
+                </div>
+                <button onclick="exportSummary()" class="btn-main" id="exportBtn">生成交換文字</button>
+            </header>
+            <div id="gameContent" class="space-y-8 mb-24"></div>
+        </div>
+    </div>
+
+    <!-- 彈窗 -->
+    <div id="summaryModal" class="fixed inset-0 bg-black/30 backdrop-blur-sm hidden items-center justify-center z-[100] p-4">
+        <div class="bg-white rounded-[24px] p-8 max-w-md w-full shadow-xl">
+            <h2 class="text-lg font-black mb-4 text-gray-400">SHARE LIST</h2>
+            <div id="summaryContent" class="bg-gray-50 p-4 rounded-xl font-medium text-gray-600 max-h-60 overflow-y-auto text-sm whitespace-pre-wrap leading-relaxed"></div>
+            <div class="mt-6 flex gap-3">
+                <button onclick="copyToClipboard()" class="flex-1 btn-main" id="copyBtn">複製內容</button>
+                <button onclick="closeModal()" class="flex-1 bg-gray-100 text-gray-400 py-3 rounded-xl font-bold">關閉</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const cardData = [
+            { title: "打工的開始", cards: [{n: "我需要錢", s: 1}, {n: "賣熱狗不賺錢", s: 1}, {n: "做什麼好呢？", s: 1}, {n: "妹妹的建議", s: 1}, {n: "我決定了", s: 1}, {n: "去打工吧", s: 1}, {n: "暫時閉店", s: 1}, {n: "來賺錢吧", s: 1}] },
+            { title: "廣場工作 1", cards: [{n: "警察委託", s: 1}, {n: "尋找小狗", s: 1}, {n: "發現狗狗", s: 1}, {n: "跟我來！", s: 1}, {n: "任務二", s: 1}, {n: "怎麼會搞丟包包呢？", s: 1}, {n: "找到包包", s: 2}, {n: "包包主人", s: 2}] },
+            { title: "廣場工作 2", cards: [{n: "錢還是不夠", s: 1}, {n: "小女孩的請求", s: 1}, {n: "上去好累", s: 1}, {n: "來，給你", s: 1}, {n: "快跟上", s: 2}, {n: "錢不夠嗎？", s: 2}, {n:
